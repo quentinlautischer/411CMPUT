@@ -35,6 +35,7 @@ public:
     printMotion(outFile);
 
     outFile.close();
+    std::cout << "BVH configuration output to file: " << outputFileName << std::endl;
   }
 
   void printMotion(std::ostream &s)

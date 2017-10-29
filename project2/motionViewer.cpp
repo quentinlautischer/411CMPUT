@@ -31,12 +31,9 @@
 #endif
 
 int modelList;
-static int isWire = 1;
-static int isOrtho = 0;
-static int isFog = 0;
-static int isPaused = 0;
+static int virtualSpeed = 120;
+static bool isPaused = false;
 static int currentFrame = 0;
-static std::chrono::time_point<std::chrono::system_clock> lastTimeSnap = std::chrono::system_clock::now();
 std::thread* t;
 
 std::unique_ptr<BVHLoader> animationLoader = nullptr;
@@ -75,10 +72,18 @@ void drawScene()
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
 
+  // Camera
+  glRotatef(camera->orientation_.toRotationMatrix().eulerAngles(2, 1, 0)[0] * (180/M_PI), 1.0f, 0.0f, 0.0f);  
+  glRotatef(camera->orientation_.toRotationMatrix().eulerAngles(2, 1, 0)[1] * (180/M_PI), 0.0f, 1.0f, 0.0f);
+  glRotatef(camera->orientation_.toRotationMatrix().eulerAngles(2, 1, 0)[2] * (180/M_PI), 0.0f, 0.0f, 1.0f);
+
+  glPopMatrix();
+
+
   glColor3f(1.0, 1.0, 1.0);
   glLineWidth(1.5);
 
-  glTranslatef(-animation->motion_[0][0], -animation->motion_[0][1], -animation->motion_[0][1]-50+zoom);
+  glTranslatef(-animation->motion_[0][0]-camera->translation_.x(), -animation->motion_[0][1]-camera->translation_.y(), -animation->motion_[0][1]-camera->translation_.z()-50+zoom);
   // setInitialJointLocations();
   
   animation->tree_->enumerate<std::function<void(BVHTreeNode*)>,std::function<void(BVHTreeNode*)>>
@@ -159,7 +164,7 @@ Eigen::Quaternion<float, 0> createQuaternion(float xAngleDegree, float yAngleDeg
 
 void processNextFrame()
 {
-  std::cout << "Processing Next Frame" << std::endl;
+  // std::cout << "Processing Next Frame" << std::endl;
 
   int currentFrameData = 0;
   
@@ -174,7 +179,7 @@ void processNextFrame()
         for(std::string channel : node->channels_)
         {
           node->channelValues_[channel] = animation->motion_[currentFrame][currentFrameData];
-          std::cout << " " << node->channelValues_[channel];
+          // std::cout << " " << node->channelValues_[channel];
           currentFrameData++;
 
           if (channel == "Xrotation")
@@ -191,12 +196,12 @@ void processNextFrame()
         q = qy*q;
         q = qz*q;
         q.normalize();  
-        std::cout << std::endl;
+        // std::cout << std::endl;
         node->orientation_ = q;
     });
 
   currentFrame = (currentFrame + 1) % animation->frames_;
-  std::cout << "Current Frame #: " <<currentFrame << std::endl;
+  // std::cout << "Current Frame #: " <<currentFrame << std::endl;
 }
 
 // OpenGL window reshape routine.
@@ -215,56 +220,36 @@ void keyInput(unsigned char key, int x, int y)
    switch (key) 
    {
       case 'w':
-        // model->print("out.obj");
+        animation->printToBVH("output.bvh");
         break;
       case 'q':
+         isPaused = true;
+         std::terminate();
          exit(0);
          break;
-      case 'v':
-        //Orthographic
-        std::cout << std::endl << "Orthographic Mode" << std::endl;
-        isOrtho = 1;
-        glutPostRedisplay();
-        break;
-      case 'V':
-        //Perspective
-        std::cout << std::endl << "Perspective Mode" << std::endl;
-        isOrtho = 0;
-        glutPostRedisplay();
-        break;
-      case 'f':
-        //Fog Effect Off
-        std::cout << std::endl << "Fog Disabled" << std::endl;
-        glDisable(GL_FOG);
-        break;
-      case 'F':
-        std::cout << std::endl << "Fog Enabled" << std::endl;
-        glEnable(GL_FOG);
-        //Fog Effect On
-        break;
       case 'x':
-
         //Reset
-        // model->reset();
-        // camera->reset();
-        // model->translation_.z() = -10;
+        isPaused = true;
+        camera->reset();
+        currentFrame = 0;
+        processNextFrame();
         glutPostRedisplay();
         break;
       case '+':
-        zoom += 10;
+        virtualSpeed += 10;
         break;
       case '-':
-        zoom -= 10;
+        virtualSpeed -= 10;
         break;
-      case 'p':
-        currentFrame = (currentFrame + 10) % animation->frames_;
+      case 'P':
+        isPaused = !isPaused;
+        break;
       case ' ':    
         processNextFrame();
         glutPostRedisplay();
         break;   
       default:
-        // model->keyInput(key, x, y);
-        // camera->keyInput(key, x, y);
+        camera->keyInput(key, x, y);
         break;
    }
    glutPostRedisplay();
@@ -288,23 +273,21 @@ int main(int argc, char **argv)
   glutInitWindowPosition(100, 100);
   glutCreateWindow("Project 2 - ModelViewer - Quentin Lautischer");
 
+  camera.reset(new Camera());
   animationLoader.reset(new BVHLoader());
   animation = animationLoader->load(argv[1]);
 
   t = new std::thread([](){
     while(1)
     {
-      if (std::chrono::system_clock::now()-lastTimeSnap > std::chrono::milliseconds((int)animation->frameTime_*1000))
+      if (!isPaused)
       {
-        lastTimeSnap = std::chrono::system_clock::now();
         processNextFrame();
         glutPostRedisplay();
-        std::cout << "Tick Tock" << std::endl;
-      }  
+      }
+      std::this_thread::sleep_for(std::chrono::microseconds(8333));
     }
   });
-
-  animation->printToBVH("output.bvh");
 
   setInitialJointLocations();
 
