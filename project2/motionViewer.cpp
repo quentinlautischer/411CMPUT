@@ -35,7 +35,6 @@ int modelList;
 static int virtualSpeed = 120;
 static bool isPaused = false;
 static double currentFrame = 0.0;
-std::thread* t;
 
 std::unique_ptr<BVHLoader> animationLoader = nullptr;
 std::unique_ptr<Animation> animation = nullptr;
@@ -263,6 +262,7 @@ void processNextFrame()
   else
     currentFrame = fmod(currentFrame, (double) animation->frames_-1);
 
+  glutPostRedisplay();
 
   // std::cout << "Current Frame #: " <<currentFrame << std::endl;
 }
@@ -323,6 +323,13 @@ void keyInput(unsigned char key, int x, int y)
    }
 }
 
+void fps(int val)
+{
+  if (!isPaused)
+    processNextFrame();
+  glutTimerFunc(8, fps, 0);
+}
+
 // Main routine.
 int main(int argc, char **argv)
 {
@@ -339,17 +346,8 @@ int main(int argc, char **argv)
   animationLoader.reset(new BVHLoader());
   animation = animationLoader->load(argv[1]);
 
-  t = new std::thread([](){
-    while(1)
-    {
-      if (!isPaused)
-      {
-        processNextFrame();
-      }
-      glutPostRedisplay();
-      std::this_thread::sleep_for(std::chrono::microseconds(8333));
-    }
-  });
+  //8.333ms is 120 Frames per second 
+  glutTimerFunc(8, fps, 0);
 
   setInitialJointLocations();
 
