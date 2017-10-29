@@ -1,5 +1,6 @@
 #pragma once
 #include <list>
+#include <map>
 void printIndentation(std::ostream &s, int level)
 {
   for (int i = 0; i < level; i++)
@@ -16,7 +17,10 @@ public:
   std::string type_;
   Eigen::Vector3f offset_;
   Eigen::Vector3f location_;
+  Eigen::Vector3f parentLocation_;
   std::list<std::string> channels_;
+  std::map<std::string, float> channelValues_;
+  Eigen::Quaternion<float, 0> orientation_;
 
   std::list<BVHTreeNode*> children_;
   BVHTreeNode* parent_ = nullptr;
@@ -25,8 +29,13 @@ public:
   {
     children_ = std::list<BVHTreeNode*>();
     channels_ = std::list<std::string>();
+    channelValues_ = std::map<std::string, float>();
     offset_ = Eigen::Vector3f(0.0, 0.0, 0.0);
     location_ = Eigen::Vector3f(0.0, 0.0, 0.0);
+    parentLocation_ = Eigen::Vector3f(0.0, 0.0, 0.0);
+    orientation_ = Eigen::AngleAxisf(0, Eigen::Vector3f::UnitX())
+      * Eigen::AngleAxisf(0,  Eigen::Vector3f::UnitY())
+      * Eigen::AngleAxisf(0, Eigen::Vector3f::UnitZ());
   }
 
   BVHTreeNode* addChild(BVHTreeNode *node)
@@ -64,10 +73,6 @@ public:
     {
       printIndentation(s, indentationLevel);
       s << "CHANNELS " << channels_.size();
-      // for(int i = 0; i < channels_.size(); i++)
-      // {
-      //   s << " " << channels_[i];
-      // }
       for(std::string str : channels_)
       {
         s << " " << str;
@@ -104,7 +109,7 @@ public:
     {
       node->enumerate(pred, post);
     }
-    post();
+    post(this);
   }
 
 };

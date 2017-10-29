@@ -1,9 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////      
-// modelViewer.cpp - Assignment 1 - CMPUT 411 - University of Alberta
+// mationViewer.cpp - Assignment 2 - CMPUT 411 - University of Alberta
 //
-// This program loads any .obj mesh outputs the resulting transformed mesh.
-// This program allows for viewing and manipulation of the model with 
-// 12 degrees of freedom.
 //
 // Quentin Lautischer
 //////////////////////////////////////////////////////////////////////////////// 
@@ -13,6 +10,8 @@
 #include <memory>
 #include <vector>
 #include <sstream>
+#include <thread>
+#include <chrono>
 
 #include <Eigen/Dense>
 #include "camera.h"
@@ -35,111 +34,169 @@ int modelList;
 static int isWire = 1;
 static int isOrtho = 0;
 static int isFog = 0;
+static int isPaused = 0;
+static int currentFrame = 0;
+static std::chrono::time_point<std::chrono::system_clock> lastTimeSnap = std::chrono::system_clock::now();
+std::thread* t;
 
 std::unique_ptr<BVHLoader> animationLoader = nullptr;
 std::unique_ptr<Animation> animation = nullptr;
 std::unique_ptr<Camera> camera = nullptr;
 
-void drawScene()
+double zoom = 0.0;
+
+void setInitialJointLocations()
 {
-  glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-  glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-  if (isWire) 
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
-  glMatrixMode (GL_PROJECTION);
-  glLoadIdentity();
-  if (isOrtho) {
-    glOrtho(-1.0, 1.0, -1.0, 1.0, 8, 100);
-  } else {
-    glFrustum(-20.0, 20.0, -20.0, 20.0, 8, 100);
-  }
-    
-  glMatrixMode(GL_MODELVIEW);
-
-  glLoadIdentity();
-  
-  glMatrixMode (GL_MODELVIEW);
-
-  // Camera
-  // glRotatef(camera->orientation_.toRotationMatrix().eulerAngles(2, 1, 0)[0] * (180/M_PI), 1.0f, 0.0f, 0.0f);  
-  // glRotatef(camera->orientation_.toRotationMatrix().eulerAngles(2, 1, 0)[1] * (180/M_PI), 0.0f, 1.0f, 0.0f);
-  // glRotatef(camera->orientation_.toRotationMatrix().eulerAngles(2, 1, 0)[2] * (180/M_PI), 0.0f, 0.0f, 1.0f);
-
-  // glPopMatrix();
-   
-  // glMatrixMode (GL_MODELVIEW);
-
-  // glTranslatef(model->translation_.x(), model->translation_.y(), model->translation_.z());
-
-  // glTranslatef(-camera->translation_.x(), -camera->translation_.y(), -camera->translation_.z());
-  
-  // // Model  
-  // glRotatef(model->orientation_.toRotationMatrix().eulerAngles(2, 1, 0)[0] * (180/M_PI), 1.0f, 0.0f, 0.0f);  
-  // glRotatef(model->orientation_.toRotationMatrix().eulerAngles(2, 1, 0)[1] * (180/M_PI), 0.0f, 1.0f, 0.0f);
-  // glRotatef(model->orientation_.toRotationMatrix().eulerAngles(2, 1, 0)[2] * (180/M_PI), 0.0f, 0.0f, 1.0f);
-  // gluLookAt(0.0, 0.0, 20.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
-  gluLookAt(0.0, 0.0, 20.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
-  glColor3f(1.0, 1.0, 1.0);
-  glLineWidth(2.5);
-  // glCallList(modelList);
-  glBegin(GL_LINES);
-    animation->tree_->enumerate<std::function<void(BVHTreeNode*)>>
+  animation->tree_->enumerate<std::function<void(BVHTreeNode*)>>
     ([&](BVHTreeNode *node)
     {
-      if (node->parent_ != nullptr) 
+      if (node->parent_ != nullptr)
       {
-        std::cout << "Linking " << node->getName() << " " << node->location_.data()[0]<< " " <<node->location_.data()[1]<<" " << node->location_.data()[2] << " to " << node->parent_->getName() << ":" << node->parent_->location_.data()[0] <<" " << node->parent_->location_.data()[1] <<" " << node->parent_->location_.data()[2]  <<" " << std::endl; 
-
-        glVertex3fv(node->parent_->location_.data());
-        glVertex3fv(node->location_.data());  
+        node->location_ = node->offset_ + node->parent_->location_;
+        node->parentLocation_ = node->parent_->location_;
       }
       else
       {
-        std::cout << "No Linking this is a root node" << std::endl;
+        node->location_ = node->offset_;
       }
     });
-    
-  glEnd();
+}
 
+void drawScene()
+{
+  glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+  glMatrixMode (GL_PROJECTION);
+  glLoadIdentity();
+
+  glFrustum(-1.0, 1.0, -1.0, 1.0, 1.0, 100.0);
+    
+  glMatrixMode(GL_MODELVIEW);
+  glLoadIdentity();
+
+  glColor3f(1.0, 1.0, 1.0);
+  glLineWidth(1.5);
+
+  glTranslatef(-animation->motion_[0][0], -animation->motion_[0][1], -animation->motion_[0][1]-50+zoom);
+  // setInitialJointLocations();
+  
+  animation->tree_->enumerate<std::function<void(BVHTreeNode*)>,std::function<void(BVHTreeNode*)>>
+  ([&](BVHTreeNode *node)
+  {
+    glPushMatrix();
+    
+    if (node->parent_ != nullptr) 
+    {
+      // Translate to Join pivot point
+      glTranslatef(node->parent_->location_.data()[0], node->parent_->location_.data()[1], node->parent_->location_.data()[2]);
+      
+      for(std::string channel : node->channels_)
+      {
+        if (channel == "Zrotation")
+          glRotatef(node->parent_->orientation_.toRotationMatrix().eulerAngles(2, 1, 0)[0] * (180.0/M_PI), 0.0f, 0.0f, 1.0f);
+      }
+      for(std::string channel : node->channels_)
+      {
+        if (channel == "Yrotation")
+          glRotatef(node->parent_->orientation_.toRotationMatrix().eulerAngles(2, 1, 0)[1] * (180.0/M_PI), 0.0f, 1.0f, 0.0f);
+      }
+      for(std::string channel : node->channels_)
+      {
+        if (channel == "Xrotation")
+          glRotatef(node->parent_->orientation_.toRotationMatrix().eulerAngles(2, 1, 0)[2] * (180.0/M_PI), 1.0f, 0.0f, 0.0f);
+      }
+      glTranslatef(-node->parent_->location_.data()[0], -node->parent_->location_.data()[1], -node->parent_->location_.data()[2]);
+    }
+
+    for(std::string channel : node->channels_)
+    {
+      if (channel == "Xposition")
+        glTranslatef(node->channelValues_[channel], 0.0, 0.0);
+      else if (channel == "Yposition")
+        glTranslatef(0.0, node->channelValues_[channel], 0.0);
+      else if (channel == "Zposition")
+        glTranslatef(0.0, 0.0, node->channelValues_[channel]);
+    }
+    
+
+    if (node->parent_ != nullptr) 
+    {
+      glBegin(GL_LINES);
+        glVertex3fv(node->parentLocation_.data());
+        glVertex3fv(node->location_.data());  
+      glEnd();
+    }
+  },
+  [&](BVHTreeNode *node)
+  {
+    glPopMatrix();
+  });
+    
   glutSwapBuffers();
 }
 
 void setup(void)
 {
   glEnable(GL_DEPTH_TEST);
-  // glEnable(GL_NORMALIZE);
+  glEnable(GL_NORMALIZE);
 
   glClearColor(0.0, 0.0, 0.0, 0.0);
 
-  // model->scaleAndCenterModelVertices();
-
-  modelList = glGenLists(1);
-  glNewList(modelList, GL_COMPILE);
-  
-  glEndList();
-
-  // for (int i = 0; i < model->faces_.size(); ++i)
-  // {
-  //   glBegin(GL_TRIANGLE_STRIP);
-  //     glVertex3fv(model->vertices_[model->faces_[i].data()[0]-1].data());
-  //     glVertex3fv(model->vertices_[model->faces_[i].data()[1]-1].data());
-  //     glVertex3fv(model->vertices_[model->faces_[i].data()[2]-1].data());
-  //   glEnd();
-  //   if (model->faces_[i].data()[3] != -1)
-  //   {
-  //     glBegin(GL_TRIANGLE_STRIP);
-  //       glVertex3fv(model->vertices_[model->faces_[i].data()[0]-1].data());
-  //       glVertex3fv(model->vertices_[model->faces_[i].data()[2]-1].data());
-  //       glVertex3fv(model->vertices_[model->faces_[i].data()[3]-1].data());
-  //     glEnd();
-  //   }
-  // }
-
-  // model->translation_.z() = -10.0;
-
   glutPostRedisplay();
+}
+
+Eigen::Quaternion<float, 0> createQuaternion(float xAngleDegree, float yAngleDegree, float zAngleDegree)
+{
+  Eigen::Quaternion<float, 0> q;
+  
+  q = Eigen::AngleAxisf(xAngleDegree*(M_PI/180), Eigen::Vector3f::UnitX())
+  * Eigen::AngleAxisf(yAngleDegree*(M_PI/180),  Eigen::Vector3f::UnitY())
+  * Eigen::AngleAxisf(zAngleDegree*(M_PI/180), Eigen::Vector3f::UnitZ());
+
+  return q;
+}
+
+void processNextFrame()
+{
+  std::cout << "Processing Next Frame" << std::endl;
+
+  int currentFrameData = 0;
+  
+  animation->tree_->enumerate<std::function<void(BVHTreeNode*)>>
+    ([&](BVHTreeNode *node)
+    {
+        Eigen::Quaternion<float, 0> q = createQuaternion(0.0, 0.0, 0.0);
+        Eigen::Quaternion<float, 0> qz = createQuaternion(0.0, 0.0, 0.0);
+        Eigen::Quaternion<float, 0> qy = createQuaternion(0.0, 0.0, 0.0);
+        Eigen::Quaternion<float, 0> qx = createQuaternion(0.0, 0.0, 0.0);
+        
+        for(std::string channel : node->channels_)
+        {
+          node->channelValues_[channel] = animation->motion_[currentFrame][currentFrameData];
+          std::cout << " " << node->channelValues_[channel];
+          currentFrameData++;
+
+          if (channel == "Xrotation")
+            qx = createQuaternion(node->channelValues_[channel], 0.0, 0.0);
+          else if (channel == "Yrotation")
+            qy = createQuaternion(0.0, node->channelValues_[channel], 0.0);
+          else if (channel == "Zrotation")
+            qz = createQuaternion(0.0, 0.0, node->channelValues_[channel]);
+          else
+            continue;
+        }
+
+        q = qx*q;
+        q = qy*q;
+        q = qz*q;
+        q.normalize();  
+        std::cout << std::endl;
+        node->orientation_ = q;
+    });
+
+  currentFrame = (currentFrame + 1) % animation->frames_;
+  std::cout << "Current Frame #: " <<currentFrame << std::endl;
 }
 
 // OpenGL window reshape routine.
@@ -186,17 +243,23 @@ void keyInput(unsigned char key, int x, int y)
         //Fog Effect On
         break;
       case 'x':
+
         //Reset
         // model->reset();
         // camera->reset();
         // model->translation_.z() = -10;
         glutPostRedisplay();
         break;
+      case '+':
+        zoom += 10;
+        break;
+      case '-':
+        zoom -= 10;
+        break;
+      case 'p':
+        currentFrame = (currentFrame + 10) % animation->frames_;
       case ' ':    
-        if (isWire == 0) 
-          isWire = 1;
-        else
-          isWire = 0;
+        processNextFrame();
         glutPostRedisplay();
         break;   
       default:
@@ -223,39 +286,33 @@ int main(int argc, char **argv)
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH); 
   glutInitWindowSize(500, 500);
   glutInitWindowPosition(100, 100);
-  glutCreateWindow("Project 1 - ModelViewer - Quentin Lautischer");
+  glutCreateWindow("Project 2 - ModelViewer - Quentin Lautischer");
 
   animationLoader.reset(new BVHLoader());
   animation = animationLoader->load(argv[1]);
 
+  t = new std::thread([](){
+    while(1)
+    {
+      if (std::chrono::system_clock::now()-lastTimeSnap > std::chrono::milliseconds((int)animation->frameTime_*1000))
+      {
+        lastTimeSnap = std::chrono::system_clock::now();
+        processNextFrame();
+        glutPostRedisplay();
+        std::cout << "Tick Tock" << std::endl;
+      }  
+    }
+  });
+
   animation->printToBVH("output.bvh");
 
-  // std::cout << "TEST: " << animation->tree_->children_.at(0).children_.at(0).parent_->getName() << animation->tree_->children_.at(0).children_.at(0).parent_->type_ << std::endl;
-  // std::cout << "TEST: " << animation->tree_->children_[0].children_[0].parent_->parent_->getName() << animation->tree_->children_[0].children_[0].parent_->parent_->type_ << std::endl;
-  animation->tree_->enumerate<std::function<void(BVHTreeNode*)>>
-    ([&](BVHTreeNode *node)
-    {
-      if (node->parent_ != nullptr)
-      {
-        std::cout << "HI" << std::endl;
-        std::cout << "CALCULATING " << node->getName() << " " << node->location_.data()[0]<< " " <<node->location_.data()[1]<<" " << node->location_.data()[2] << " to " << node->parent_->getName() << ":" << node->parent_->location_.data()[0] <<" " << node->parent_->location_.data()[1] <<" " << node->parent_->location_.data()[2]  <<" " << std::endl;
-        std::cout << "CurrentNode Offset: " << node->offset_[0] << ":" << node->offset_[1] << ":" << node->offset_[2] << std::endl;
-        node->location_ = node->offset_ + node->parent_->location_;
-        std::cout << "CALCULATING " << node->getName() << " " << node->location_.data()[0]<< " " <<node->location_.data()[1]<<" " << node->location_.data()[2] << " to " << node->parent_->getName() << ":" << node->parent_->location_.data()[0] <<" " << node->parent_->location_.data()[1] <<" " << node->parent_->location_.data()[2]  <<" " << std::endl;
-      }
-      else
-      {
-        // node->location_ = node->offset_;
-      }
-    });
-
+  setInitialJointLocations();
 
   glutReshapeFunc(resize);
   glutSpecialFunc(specialKeyInput);
   glutKeyboardFunc(keyInput);
   glutDisplayFunc(drawScene);
 
-  glewExperimental = GL_TRUE; 
   glewInit();
 
   setup(); 

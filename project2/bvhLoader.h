@@ -103,6 +103,7 @@ public:
         {
           fscanf(obj_file_path, "%s", channelName);
           currentNode->channels_.push_back(std::string(channelName));
+          currentNode->channelValues_.emplace(std::string(channelName), 0.0);
         }
       }
     }

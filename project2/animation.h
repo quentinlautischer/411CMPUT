@@ -60,7 +60,7 @@ public:
     s << "HIERARCHY" << std::endl;
 
     int nodeDepth = 0;
-    tree_->enumerate<std::function<void(BVHTreeNode*)>,std::function<void()>>
+    tree_->enumerate<std::function<void(BVHTreeNode*)>,std::function<void(BVHTreeNode*)>>
     ([&](BVHTreeNode *node)
     {
         nodeDepth += 1;
@@ -69,7 +69,7 @@ public:
         s << "{" << std::endl;
         node->printDetail(s, nodeDepth);
     },
-    [&]()
+    [&](BVHTreeNode *node)
     {
       nodeDepth -= 1;
       printIndentation(s, nodeDepth);
