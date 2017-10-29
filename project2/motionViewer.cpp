@@ -12,6 +12,7 @@
 #include <sstream>
 #include <thread>
 #include <chrono>
+#include <math.h>
 
 #include <Eigen/Dense>
 #include "camera.h"
@@ -33,7 +34,7 @@
 int modelList;
 static int virtualSpeed = 120;
 static bool isPaused = false;
-static int currentFrame = 0;
+static double currentFrame = 0.0;
 std::thread* t;
 
 std::unique_ptr<BVHLoader> animationLoader = nullptr;
@@ -162,45 +163,107 @@ Eigen::Quaternion<float, 0> createQuaternion(float xAngleDegree, float yAngleDeg
   return q;
 }
 
+Eigen::Quaternion<float, 0> createQuaternion2(float xAngleDegree, float yAngleDegree, float zAngleDegree)
+{
+  Eigen::Quaternion<float, 0> q;
+  
+  q = Eigen::AngleAxisf(xAngleDegree*(M_PI/180), Eigen::Vector3f::UnitX())
+  * Eigen::AngleAxisf(yAngleDegree*(M_PI/180),  Eigen::Vector3f::UnitY())
+  * Eigen::AngleAxisf(zAngleDegree*(M_PI/180), Eigen::Vector3f::UnitZ());
+
+  return q;
+}
+
 void processNextFrame()
 {
   // std::cout << "Processing Next Frame" << std::endl;
 
   int currentFrameData = 0;
+  double floorFrame = 0.0;
+  double ceilFrame = 0.0;
+
+  if (virtualSpeed > 0)
+  {
+    floorFrame = floor(currentFrame);
+    ceilFrame = ceil(currentFrame);
+  }
+  else
+  {
+    floorFrame = ceil(currentFrame);
+    ceilFrame = floor(currentFrame);
+  }
+ 
+  double t = currentFrame - floorFrame;
   
+
   animation->tree_->enumerate<std::function<void(BVHTreeNode*)>>
     ([&](BVHTreeNode *node)
     {
-        Eigen::Quaternion<float, 0> q = createQuaternion(0.0, 0.0, 0.0);
-        Eigen::Quaternion<float, 0> qz = createQuaternion(0.0, 0.0, 0.0);
-        Eigen::Quaternion<float, 0> qy = createQuaternion(0.0, 0.0, 0.0);
-        Eigen::Quaternion<float, 0> qx = createQuaternion(0.0, 0.0, 0.0);
+        Eigen::Quaternion<float, 0> q1 = createQuaternion(0.0, 0.0, 0.0);
+        Eigen::Quaternion<float, 0> q2 = createQuaternion2(0.0, 0.0, 0.0);
+
+
+        Eigen::Quaternion<float, 0> qz1 = createQuaternion(0.0, 0.0, 0.0);
+        Eigen::Quaternion<float, 0> qy1 = createQuaternion(0.0, 0.0, 0.0);
+        Eigen::Quaternion<float, 0> qx1 = createQuaternion(0.0, 0.0, 0.0);
+        Eigen::Quaternion<float, 0> qz2 = createQuaternion2(0.0, 0.0, 0.0);
+        Eigen::Quaternion<float, 0> qy2 = createQuaternion2(0.0, 0.0, 0.0);
+        Eigen::Quaternion<float, 0> qx2 = createQuaternion2(0.0, 0.0, 0.0);
         
         for(std::string channel : node->channels_)
         {
-          node->channelValues_[channel] = animation->motion_[currentFrame][currentFrameData];
+          //LERP
+          node->channelValues_[channel] = (1-t)*animation->motion_[floorFrame][currentFrameData] + t*animation->motion_[ceilFrame][currentFrameData];
           // std::cout << " " << node->channelValues_[channel];
           currentFrameData++;
 
           if (channel == "Xrotation")
-            qx = createQuaternion(node->channelValues_[channel], 0.0, 0.0);
+          {
+            qx1 = createQuaternion(node->channelValues_[channel], 0.0, 0.0);
+            qx2 = createQuaternion(node->channelValues_[channel], 0.0, 0.0);
+          }
           else if (channel == "Yrotation")
-            qy = createQuaternion(0.0, node->channelValues_[channel], 0.0);
+          {
+            qy1 = createQuaternion(0.0, node->channelValues_[channel], 0.0);
+            qy2 = createQuaternion(0.0, node->channelValues_[channel], 0.0);
+          }
           else if (channel == "Zrotation")
-            qz = createQuaternion(0.0, 0.0, node->channelValues_[channel]);
+          {
+            qz1 = createQuaternion(0.0, 0.0, node->channelValues_[channel]);
+            qz2 = createQuaternion(0.0, 0.0, node->channelValues_[channel]);   
+          }
           else
             continue;
         }
 
-        q = qx*q;
-        q = qy*q;
-        q = qz*q;
-        q.normalize();  
-        // std::cout << std::endl;
-        node->orientation_ = q;
+        q1 = qx1*q1;
+        q1 = qy1*q1;
+        q1 = qz1*q1;
+        q1.normalize();
+
+        q2 = qx2*q2;
+        q2 = qy2*q2;
+        q2 = qz2*q2;
+        q2.normalize();  
+
+        //SLERP ORIENTATION
+        
+        node->orientation_ = q1.slerp(t, q2);
+
+        
+
+
+
+
     });
 
-  currentFrame = (currentFrame + 1) % animation->frames_;
+  currentFrame = (currentFrame + 1.0*(virtualSpeed/120.0));
+  if (currentFrame <= 0.00 && virtualSpeed < 0)
+    currentFrame = (double) animation->frames_-1;
+  else
+    currentFrame = fmod(currentFrame, (double) animation->frames_-1);
+
+
   // std::cout << "Current Frame #: " <<currentFrame << std::endl;
 }
 
@@ -231,18 +294,24 @@ void keyInput(unsigned char key, int x, int y)
         //Reset
         isPaused = true;
         camera->reset();
-        currentFrame = 0;
+        currentFrame = 0.0;
+        virtualSpeed = 120;
         processNextFrame();
         glutPostRedisplay();
         break;
       case '+':
         virtualSpeed += 10;
+        std::cout << "Virtual Speed: " << virtualSpeed << std::endl;
         break;
       case '-':
         virtualSpeed -= 10;
+        std::cout << "Virtual Speed: " << virtualSpeed << std::endl;
         break;
       case 'P':
-        isPaused = !isPaused;
+        isPaused = true;
+        break;
+      case 'p':
+        isPaused = false;
         break;
       case ' ':    
         processNextFrame();
@@ -252,13 +321,6 @@ void keyInput(unsigned char key, int x, int y)
         camera->keyInput(key, x, y);
         break;
    }
-   glutPostRedisplay();
-}
-
-void specialKeyInput(int key, int x, int y)
-{
-  // model->specialKeyInput(key,x,y);
-  glutPostRedisplay();
 }
 
 // Main routine.
@@ -283,8 +345,8 @@ int main(int argc, char **argv)
       if (!isPaused)
       {
         processNextFrame();
-        glutPostRedisplay();
       }
+      glutPostRedisplay();
       std::this_thread::sleep_for(std::chrono::microseconds(8333));
     }
   });
@@ -292,7 +354,6 @@ int main(int argc, char **argv)
   setInitialJointLocations();
 
   glutReshapeFunc(resize);
-  glutSpecialFunc(specialKeyInput);
   glutKeyboardFunc(keyInput);
   glutDisplayFunc(drawScene);
 
