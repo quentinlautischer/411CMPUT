@@ -1,0 +1,13 @@
+
+The following classes have been removed from this code directory---
+you will need to implement these yourself to complete Assignment 3:
+light.h
+texture.h
+animation.h
+
+Also included is an incomplete mesh.h class, which is the solution to 
+Assignment 1, but requires several extensions to complete Assignment 3.
+
+The included *Viewer and *Generator programs are provided for completeness
+and enlightenment.  They work as is.
+

@@ -1,0 +1,32 @@
+
+Each mesh must be used with its corresponding weight attachment matrix.
+(Meshes are in the 'mesh' directory and weight attachment matrices are in 
+the 'attach' directory.)
+
+There are two types of mesh, small and large.  Each type has three versions.
+
+Version 0: 
+This version gives the best looking results, but it is not fully aligned.  
+In particular, the vertices (v) and normals (vn) are aligned one-to-one in 
+the face definitions, but the texture vertices (vt) are indexed separately.  
+Unfortunately, because it is not fully aligned, your programs might not run 
+properly on these files (if you built in a dependence on perfect alignment).
+
+Version 1: 
+This version gives the next best looking results, and is fully aligned.  
+In particular, the vertex (v), normal (vn) and texture (vt) indexes are all 
+aligned one-to-one in the face definitions.  Unfortunately, to achieve perfect 
+alignment some small anomalies are introduced around the seams of the texture.
+This is very hard to avoid, as it turns out.
+
+Version 2: 
+This version is also fully aligned between the vertices (v), normals (vn) and 
+textures (vt), and also handles the textures perfectly with no anomalies.  
+Instead, there are small anomalies introduced in the mesh, which has small 
+splits around the texture seams.
+
+It turns out that it is very difficult to avoid these issues, but hopefully
+you will be able to run your programs on at least some of these versions.
+(I am just supplying all three to give the greatest chance that you will
+find some version that your code runs on and gives nice looking results.)
+

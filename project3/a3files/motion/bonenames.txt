@@ -1,0 +1,38 @@
+ROOT Hips
+ 1	JOINT LHipJoint
+ 2		JOINT LeftUpLeg
+ 3			JOINT LeftLeg
+ 4				JOINT LeftFoot
+ 5					JOINT LeftToeBase
+ 6						End Site
+ 7	JOINT RHipJoint
+ 8		JOINT RightUpLeg
+ 9			JOINT RightLeg
+10				JOINT RightFoot
+11					JOINT RightToeBase
+12						End Site
+13	JOINT LowerBack
+14		JOINT Spine
+15			JOINT Spine1
+16				JOINT Neck
+17					JOINT Neck1
+18						JOINT Head
+19						End Site
+20				JOINT LeftShoulder
+21					JOINT LeftArm
+22						JOINT LeftForeArm
+23							JOINT LeftHand
+24								JOINT LeftFingerBase
+25									JOINT LeftHandIndex1
+26										End Site
+27								JOINT LThumb
+28									End Site
+29				JOINT RightShoulder
+30					JOINT RightArm
+31						JOINT RightForeArm
+32							JOINT RightHand
+33								JOINT RightFingerBase
+34									JOINT RightHandIndex1
+35										End Site
+36								JOINT RThumb
+37									End Site

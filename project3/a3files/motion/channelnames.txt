@@ -1,0 +1,96 @@
+ 1 Hips Xposition 
+ 2 Hips Yposition 
+ 3 Hips Zposition 
+ 4 Hips Zrotation 
+ 5 Hips Yrotation 
+ 6 Hips Xrotation 
+ 7 LHipJoint Zrotation 
+ 8 LHipJoint Yrotation 
+ 9 LHipJoint Xrotation
+10 LeftUpLeg Zrotation 
+11 LeftUpLeg Yrotation 
+12 LeftUpLeg Xrotation
+13 LeftLeg Zrotation 
+14 LeftLeg Yrotation 
+15 LeftLeg Xrotation
+16 LeftFoot Zrotation 
+17 LeftFoot Yrotation 
+18 LeftFoot Xrotation
+19 LeftToeBase Zrotation 
+20 LeftToeBase Yrotation 
+21 LeftToeBase Xrotation
+22 RHipJoint Zrotation 
+23 RHipJoint Yrotation 
+24 RHipJoint Xrotation
+25 RightUpLeg Zrotation 
+26 RightUpLeg Yrotation 
+27 RightUpLeg Xrotation
+28 RightLeg Zrotation 
+29 RightLeg Yrotation 
+30 RightLeg Xrotation
+31 RightFoot Zrotation 
+32 RightFoot Yrotation 
+33 RightFoot Xrotation
+34 RightToeBase Zrotation 
+35 RightToeBase Yrotation 
+36 RightToeBase Xrotation
+37 LowerBack Zrotation 
+38 LowerBack Yrotation 
+39 LowerBack Xrotation
+40 Spine Zrotation 
+41 Spine Yrotation 
+42 Spine Xrotation
+43 Spine1 Zrotation 
+44 Spine1 Yrotation 
+45 Spine1 Xrotation
+46 Neck Zrotation 
+47 Neck Yrotation 
+48 Neck Xrotation
+49 Neck1 Zrotation 
+50 Neck1 Yrotation 
+51 Neck1 Xrotation
+52 Head Zrotation 
+53 Head Yrotation 
+54 Head Xrotation
+55 LeftShoulder Zrotation 
+56 LeftShoulder Yrotation 
+57 LeftShoulder Xrotation
+58 LeftArm Zrotation 
+59 LeftArm Yrotation 
+60 LeftArm Xrotation
+61 LeftForeArm Zrotation 
+62 LeftForeArm Yrotation 
+63 LeftForeArm Xrotation
+64 LeftHand Zrotation 
+65 LeftHand Yrotation 
+66 LeftHand Xrotation
+67 LeftFingerBase Zrotation 
+68 LeftFingerBase Yrotation 
+69 LeftFingerBase Xrotation
+70 LeftHandIndex1 Zrotation 
+71 LeftHandIndex1 Yrotation 
+72 LeftHandIndex1 Xrotation
+73 LThumb Zrotation 
+74 LThumb Yrotation 
+75 LThumb Xrotation
+76 RightShoulder Zrotation 
+77 RightShoulder Yrotation 
+78 RightShoulder Xrotation
+79 RightArm Zrotation 
+80 RightArm Yrotation 
+81 RightArm Xrotation
+82 RightForeArm Zrotation 
+83 RightForeArm Yrotation 
+84 RightForeArm Xrotation
+85 RightHand Zrotation 
+86 RightHand Yrotation 
+87 RightHand Xrotation
+88 RightFingerBase Zrotation 
+89 RightFingerBase Yrotation 
+90 RightFingerBase Xrotation
+91 RightHandIndex1 Zrotation 
+92 RightHandIndex1 Yrotation 
+93 RightHandIndex1 Xrotation
+94 RThumb Zrotation 
+95 RThumb Yrotation 
+96 RThumb Xrotation

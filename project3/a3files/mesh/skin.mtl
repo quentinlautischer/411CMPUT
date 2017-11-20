@@ -1,0 +1,5 @@
+newmtl basic
+Ka 1.0 1.0 1.0
+Kd 1.0 1.0 1.0
+Ks 0.33 0.33 0.52
+map_Kd skin.bmp
