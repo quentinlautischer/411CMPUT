@@ -20,6 +20,8 @@
 #include "modelLoader.h"
 #include "animation.h"
 #include "bvhLoader.h"
+#include "attach.h"
+#include "attachLoader.h"
 
 
 #ifdef __APPLE__
@@ -43,6 +45,9 @@ std::unique_ptr<Model> model = nullptr;
 
 std::unique_ptr<BVHLoader> animationLoader = nullptr;
 std::unique_ptr<Animation> animation = nullptr;
+
+std::unique_ptr<AttachLoader> attachLoader = nullptr;
+std::unique_ptr<Attach> attach = nullptr;
 
 
 std::unique_ptr<Camera> camera = nullptr;
@@ -151,18 +156,19 @@ void setInitialJointLocations()
 void drawScene()
 {
   glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+  // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
   glMatrixMode (GL_PROJECTION);
   glLoadIdentity();
 
-  model->doSurface();
-  glBindTexture(GL_TEXTURE_2D, texture[0]);
 
   glFrustum(-1.0, 1.0, -1.0, 1.0, 1.0, 100.0);
     
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
+
+  model->doSurface();
+  glBindTexture(GL_TEXTURE_2D, texture[0]);
 
   // Camera
   glRotatef(camera->orientation_.toRotationMatrix().eulerAngles(2, 1, 0)[0] * (180/M_PI), 1.0f, 0.0f, 0.0f);  
@@ -171,12 +177,21 @@ void drawScene()
 
   glPopMatrix();
 
-  glColor3f(1.0, 0.0, 0.0);
-  glLineWidth(1.5);
+  glTranslatef(model->translation_.x(), model->translation_.y(), model->translation_.z()-40+zoom);
+
+  glTranslatef(-camera->translation_.x(), -camera->translation_.y(), -camera->translation_.z());
+
+  glLineWidth(0.2);
+  glColor3f(1.0, 1.0, 1.0);
+  glCallList(modelList);
 
   glTranslatef(-animation->motion_[0][0]-camera->translation_.x(), -animation->motion_[0][1]-camera->translation_.y(), -animation->motion_[0][1]-camera->translation_.z()-50+zoom);
   // setInitialJointLocations();
   
+
+  glColor3f(1.0, 0.0, 0.0);
+  glLineWidth(1.5);
+
   animation->tree_->enumerate<std::function<void(BVHTreeNode*)>,std::function<void(BVHTreeNode*)>>
   ([&](BVHTreeNode *node)
   {
@@ -228,9 +243,6 @@ void drawScene()
   {
     glPopMatrix();
   });
-
-  glColor3f(1.0, 1.0, 1.0);
-  glCallList(modelList);
     
   glutSwapBuffers();
 }
@@ -256,6 +268,11 @@ void setup(void)
 
   glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 
+  for(int i = 0; i < model->vertices_.size(); i++)
+  {
+    model->vertices_[i].data()[2] = model->vertices_[i].data()[2]+0.0; 
+  }
+
   modelList = glGenLists(1);
   glNewList(modelList, GL_COMPILE);
   for (int i = 0; i < model->faces_.size(); i++)
@@ -277,7 +294,12 @@ void setup(void)
   }
   glEndList();
 
-  model->translation_.z() = -20.0;
+  model->translation_.z() = 20.0;
+
+  for(int i = 0; i < 150; i++)
+  {
+    model->translateIn();    
+  }
 
   glutPostRedisplay();
 }
@@ -414,7 +436,9 @@ void keyInput(unsigned char key, int x, int y)
    switch (key) 
    {
       case 'w':
-        animation->printToBVH("output.bvh");
+        model->print("meshout.obj");
+        animation->printToBVH("skeletonout.bvh");
+        attach->print("attachout.att");
         break;
       case 'q':
          isPaused = true;
@@ -488,7 +512,7 @@ int main(int argc, char **argv)
 
   model.reset(modelLoader->load(argv[1]));
   animation = animationLoader->load(argv[2]);
-  attach.reset()
+  attach.reset(attachLoader->load(argv[3]));
 
   //8.333ms is 120 Frames per second 
   glutTimerFunc(8, fps, 0);

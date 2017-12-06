@@ -44,10 +44,6 @@ public:
         model->add_face(*new Eigen::Vector3f(f1, f2, f3));
         model->add_face_t(*new Eigen::Vector3f(t1, t2, t3));
         model->add_face_n(*new Eigen::Vector3f(n1, n2, n3));
-        std::cout << "#####" << std::endl;
-        std::cout << f1 << " " << f2 << " " << f3 << std::endl;
-        std::cout << t1 << " " << t2 << " " << t3 << std::endl;
-        std::cout << n1 << " " << n2 << " " << n3 << std::endl;
       }
 
       if (strcmp(lineHeader, "vt") == 0)

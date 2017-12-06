@@ -90,6 +90,8 @@ public:
   {
     if (sToggle == 0) //wire
     {
+      glDisable(GL_LIGHT0);
+      glDisable(GL_LIGHTING);
       glDisable(GL_TEXTURE_2D);
       glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     } 
@@ -270,19 +272,16 @@ public:
     outFile.open(outputFileName);
     
     int i;
-    std::cout << "verts" << std::endl;
     for(i = 0; i < vertices_.size(); i++)
     {
       outFile << std::fixed << "v " << vertices_[i][0] << " " << vertices_[i][1] << " " << vertices_[i][2] << std::endl;
     }
 
-    std::cout << "vts" << std::endl;
     for(i = 0; i < vt_.size(); i++)
     {
       outFile << std::fixed << "vt " << vt_[i][0] << " " << vt_[i][1] << std::endl;
     }
 
-    std::cout << "vns" << std::endl;
     for(i = 0; i < vn_.size(); i++)
     {
       outFile << std::fixed << "vn " << vn_[i][0] << " " << vn_[i][1] << " " << vn_[i][2] << std::endl;
